@@ -1,0 +1,94 @@
+trigger: none
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  myDirectory: 'templates/azure-pipelines'
+
+stages:
+- stage: 'stage1'
+  displayName: 'Stage 1'
+  jobs:
+  - job: 'job1'
+    displayName: 'Job 1 - Create hello.txt and save to artifact'
+    steps:
+    - bash: ls
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'List myDirectory'
+
+    - bash: touch hello.txt
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'Create a hello.txt file'
+
+    - bash: echo "Hello" > hello.txt
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'Put "hello" into hello.txt'
+
+    - bash: ls
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'List myDirectory'
+
+    - task: CopyFiles@2
+      displayName: 'Save hello.txt as artifact'
+      inputs:
+        contents: '$(myDirectory)/hello.txt'
+        targetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - publish: '$(Build.ArtifactStagingDirectory)/$(myDirectory)'
+      displayName: 'Publish artifact'
+      artifact: 'hello'
+
+  - job: 'job2'
+    displayName: 'Job 2 - Build & Cache NodeJS'
+    steps:
+    - task: Cache@2
+      inputs:
+        key: 'version1 | "$(Agent.OS)" | $(myDirectory)/package.json'
+        restoreKeys: |
+          npm | "$(Agent.OS)"
+        path: '$(Build.SourcesDirectory)/$(myDirectory)/node_modules'
+        cacheHitVar: CACHE_RESTORED
+
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '10.x'
+      displayName: 'Install NodeJS'
+      condition: ne(variables.CACHE_RESTORED, 'true')
+
+    - script: npm i smallest
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'Install NodeJS Dependencies'
+      condition: ne(variables.CACHE_RESTORED, 'true')
+
+    - bash: ls
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'List myDirectory'
+
+- stage: 'stage2'
+  displayName: 'Stage 2'
+  dependsOn: 'stage1'
+  jobs:
+  - job: 'job1'
+    displayName: 'Job 1 - Reuse an artifact'
+    variables:
+      myVariable: 'Bye'
+    steps:
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        artifact: 'hello'
+        path: '$(Build.SourcesDirectory)/$(myDirectory)'
+      condition: ne(variables.CACHE_RESTORED, 'true')
+
+    - bash: ls
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'List myDirectory'
+
+    - bash: echo $(myVariable) >> hello.txt
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'Append test variable into hello.txt'
+
+    - bash: cat hello.txt
+      workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
+      displayName: 'Display contents of hello.txt'
