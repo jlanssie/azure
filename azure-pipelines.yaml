@@ -5,11 +5,18 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  myDirectory: 'templates/azure-pipelines'
+  workingDir: 'myDir'
+  npm_config_cache: $(Pipeline.Workspace)/$(workingDir)/.npm
+  myBooleanVar: 'true'
+  myStringVar: 'abc'
+  myIntegerVar: '123'
+
 
 stages:
 - stage: 'stage1'
   displayName: 'Stage 1'
+  dependsOn: []
+  condition: and(succeededOrFailed(), ne(variables['Build.Reason'], 'Schedule'))
   jobs:
   - job: 'job1'
     displayName: 'Job 1 - Create hello.txt and save to artifact'
@@ -26,7 +33,8 @@ stages:
       workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
       displayName: 'Put "hello" into hello.txt'
 
-    - bash: ls
+    - script: |
+        ls
       workingDirectory: '$(Build.SourcesDirectory)/$(myDirectory)'
       displayName: 'List myDirectory'
 
@@ -68,7 +76,8 @@ stages:
 
 - stage: 'stage2'
   displayName: 'Stage 2'
-  dependsOn: 'stage1'
+  dependsOn: []
+  condition: succeededOrFailed()
   jobs:
   - job: 'job1'
     displayName: 'Job 1 - Reuse an artifact'
