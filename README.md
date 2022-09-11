@@ -1,14 +1,10 @@
-# Introduction
+# Azure
 
 A template for often used features of Azure Pipelines.
 
-## Installation
-
-No installation required.
-
 ## Configuration
 
-Configure the pipeline in the yaml file. 
+Configure the pipeline in the YAML file. 
 
 ## Usage
 
